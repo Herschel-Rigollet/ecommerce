@@ -1,4 +1,4 @@
 package kr.hhplus.be.server.dto;
 
-public class BalanceResponse {
+public class BalanceChargeRequest {
 }
