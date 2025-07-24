@@ -1,4 +1,4 @@
 package kr.hhplus.be.server.dto;
 
-public class CouponResponse {
+public class CouponIssueRequest {
 }
