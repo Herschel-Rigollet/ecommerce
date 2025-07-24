@@ -22,6 +22,10 @@ public class Coupon {
         this.used = true;
     }
 
+    public void rollbackUse() {
+        this.used = false;
+    }
+
     public String getId() {
         return id;
     }

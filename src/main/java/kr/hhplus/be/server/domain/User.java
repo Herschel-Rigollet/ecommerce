@@ -36,6 +36,10 @@ public class User {
         }
     }
 
+    public void refund(long amount) {
+        this.amount += amount;
+    }
+
     public long getAmount() {
         return amount;
     }

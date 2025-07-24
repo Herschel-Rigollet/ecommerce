@@ -13,6 +13,9 @@ public class Order {
         this.totalAmount = totalAmount;
     }
 
+    public static Order place(Long userId, Long productId, int quantity, long totalPrice, Long couponId) {
+    }
+
     public Long getUserId() {
         return userId;
     }
