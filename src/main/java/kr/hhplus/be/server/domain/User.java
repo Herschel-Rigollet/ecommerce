@@ -1,9 +1,14 @@
 package kr.hhplus.be.server.domain;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+
+@Entity
 public class User {
     private static final String INVALID_CHARGE_MESSAGE = "충전 금액은 0보다 커야 합니다.";
     private static final String INSUFFICIENT_BALANCE_MESSAGE = "잔액이 부족합니다.";
 
+    @Id
     private final Long userId;
     private long amount;
 
