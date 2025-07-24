@@ -14,6 +14,7 @@ public class Order {
     }
 
     public static Order place(Long userId, Long productId, int quantity, long totalPrice, Long couponId) {
+        return null;
     }
 
     public Long getUserId() {

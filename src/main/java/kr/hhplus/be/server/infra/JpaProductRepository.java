@@ -21,4 +21,9 @@ public class JpaProductRepository implements ProductRepository {
     public List<Product> findAll() {
         return jpa.findAll();
     }
+
+    @Override
+    public void save(Product product) {
+        jpa.save(product);
+    }
 }

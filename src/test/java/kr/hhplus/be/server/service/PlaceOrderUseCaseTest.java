@@ -14,6 +14,7 @@ public class PlaceOrderUseCaseTest {
     private OrderRepository orderRepository;
     private DataPlatformSender sender;
     private PlaceOrderUseCase placeOrderUseCase;
+    private CouponRepository couponRepository;
 
     @BeforeEach
     void setUp() {
@@ -21,7 +22,7 @@ public class PlaceOrderUseCaseTest {
         balanceRepository = mock(BalanceRepository.class);
         orderRepository = mock(OrderRepository.class);
         sender = mock(DataPlatformSender.class);
-        placeOrderUseCase = new PlaceOrderUseCase(productRepository, balanceRepository, orderRepository, sender);
+        //placeOrderUseCase = new PlaceOrderUseCase(productRepository, balanceRepository, orderRepository, sender);
     }
 
     @Test
