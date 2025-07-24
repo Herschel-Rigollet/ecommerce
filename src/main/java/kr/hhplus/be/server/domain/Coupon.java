@@ -18,6 +18,14 @@ public class Coupon {
         this.used = false;
     }
 
+    public Coupon(long id, Long userId, int discountAmount, boolean used) {
+        this.id = UUID.randomUUID().toString();
+        this.userId = userId;
+        this.discountAmount = discountAmount;
+        this.issuedAt = LocalDateTime.now();
+        this.used = used;
+    }
+
     public void markUsed() {
         this.used = true;
     }
