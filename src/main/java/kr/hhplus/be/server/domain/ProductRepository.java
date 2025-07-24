@@ -1,4 +1,7 @@
 package kr.hhplus.be.server.domain;
 
-public class ProductRepository {
+import java.util.List;
+
+public interface ProductRepository {
+    List<Product> findAll();
 }
