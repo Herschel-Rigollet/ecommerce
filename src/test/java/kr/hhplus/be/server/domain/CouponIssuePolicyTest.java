@@ -1,6 +1,5 @@
-package kr.hhplus.be.server.service;
+package kr.hhplus.be.server.domain;
 
-import kr.hhplus.be.server.domain.CouponIssuePolicy;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
