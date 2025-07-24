@@ -14,6 +14,7 @@ public class Product {
     protected Product() {}  // JPA용
 
     public Product(Long id, String name, long price, int stock) {
+        if (stock < 0) throw new IllegalArgumentException("재고는 음수일 수 없습니다.");
         this.id = id; this.name = name; this.price = price; this.stock = stock;
     }
 
