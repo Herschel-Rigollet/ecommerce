@@ -1,9 +1,7 @@
 package kr.hhplus.be.server.service;
 
-import kr.hhplus.be.server.domain.BalanceRepository;
-import kr.hhplus.be.server.domain.Product;
-import kr.hhplus.be.server.domain.ProductRepository;
-import kr.hhplus.be.server.domain.User;
+import kr.hhplus.be.server.domain.*;
+import kr.hhplus.be.server.infra.DataPlatformSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

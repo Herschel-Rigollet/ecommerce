@@ -18,6 +18,13 @@ public class Product {
         this.id = id; this.name = name; this.price = price; this.stock = stock;
     }
 
+    public void decreaseStock(int quantity) {
+        if (quantity <= 0 || stock < quantity) {
+            throw new IllegalArgumentException("재고 부족 또는 잘못된 수량");
+        }
+        this.stock -= quantity;
+    }
+
     public Long getId() {
         return id;
     }
