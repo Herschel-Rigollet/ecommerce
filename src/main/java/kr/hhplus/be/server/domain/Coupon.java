@@ -18,6 +18,10 @@ public class Coupon {
         this.used = false;
     }
 
+    public void markUsed() {
+        this.used = true;
+    }
+
     public String getId() {
         return id;
     }
