@@ -96,33 +96,45 @@ Controller → Application → Domain ← Interface → Infra
 #### 20250731 수정
 패키지 구조 전면 수정했습니다.
 ```com.example.project   
-├── application   
-│   └── user   
-│       └── UserService.java   
-│   
-├── domain   
-│   └── user   
-│       └── User.java   
-│   
-├── infrastructure   
-│   └── user   
-│       └── UserRepository.java   
-│   
-├── presentation   
-│   └── user   
-│       ├── UserPointController.java   
-│       └── response   
-│           └── UserResponse.java   
-│   
-├── common   
-│   └── response   
-│       ├── CommonResponse.java   
-│       └── CommonResultCode.java   
-│   
-└── test   
-    └── application   
-        └── user   
-            └── UserServiceTest.java   
+├── application
+│   ├── user
+│   │   └── UserService.java
+│   └── product
+│       └── ProductService.java
+│
+├── domain
+│   ├── user
+│   │   └── User.java
+│   └── product
+│       └── Product.java
+│
+├── infrastructure
+│   ├── user
+│   │   └── UserRepository.java
+│   └── product
+│       └── ProductRepository.java
+│
+├── presentation
+│   ├── user
+│   │   ├── UserPointController.java
+│   │   └── response
+│   │       └── UserResponse.java
+│   └── product
+│       ├── ProductController.java
+│       └── response
+│           └── ProductResponse.java
+│
+├── common
+│   └── response
+│       ├── CommonResponse.java
+│       └── CommonResultCode.java
+│
+└── test
+    └── application
+        ├── user
+        │   └── UserServiceTest.java
+        └── product
+            └── ProductServiceTest.java   
 ```
 
 - 레이어별로 수정
