@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity
 @Getter
 @NoArgsConstructor
 public class Order {
