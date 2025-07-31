@@ -12,7 +12,10 @@ public enum CommonResultCode {
     USE_POINT_SUCCESS(200, "PO02", "잔액 사용 성공"),
 
     // product
-    GET_PRODUCT_SUCCESS(200, "PR01", "상품 상세 조회 성공");
+    GET_PRODUCT_SUCCESS(200, "PR01", "상품 상세 조회 성공"),
+
+    // order
+    ORDER_SUCCESS(200, "OR01", "주문 성공");
 
     private final int status;
     private final String code;
