@@ -95,34 +95,35 @@ Controller → Application → Domain ← Interface → Infra
 
 #### 20250731 수정
 패키지 구조 전면 수정했습니다.
-com.example.project
-├── application
-│   └── user
-│       └── UserService.java
-│
-├── domain
-│   └── user
-│       └── User.java
-│
-├── infrastructure
-│   └── user
-│       └── UserRepository.java
-│
-├── presentation
-│   └── user
-│       ├── UserPointController.java
-│       └── response
-│           └── UserResponse.java
-│
-├── common
-│   └── response
-│       ├── CommonResponse.java
-│       └── CommonResultCode.java
-│
-└── test
-    └── application
-        └── user
-            └── UserServiceTest.java
+```com.example.project   
+├── application   
+│   └── user   
+│       └── UserService.java   
+│   
+├── domain   
+│   └── user   
+│       └── User.java   
+│   
+├── infrastructure   
+│   └── user   
+│       └── UserRepository.java   
+│   
+├── presentation   
+│   └── user   
+│       ├── UserPointController.java   
+│       └── response   
+│           └── UserResponse.java   
+│   
+├── common   
+│   └── response   
+│       ├── CommonResponse.java   
+│       └── CommonResultCode.java   
+│   
+└── test   
+    └── application   
+        └── user   
+            └── UserServiceTest.java   
+```
 
 - 레이어별로 수정
 - 굳이 필요하지 않고 중복되는 엔티티를 삭제하고, 도메인에 집중
