@@ -98,21 +98,31 @@ Controller → Application → Domain ← Interface → Infra
 ```com.example.project   
 ├── application
 │   ├── user
-│   │   └── UserService.java
-│   └── product
-│       └── ProductService.java
+│   │   ├── UserService.java
+│   │   └── UserRepository.java
+│   ├── product
+│   │   ├── ProductService.java
+│   │   └── ProductRepository.java
+│   └── order
+│       ├── OrderService.java
+│       └── OrderRepository.java
 │
 ├── domain
 │   ├── user
 │   │   └── User.java
-│   └── product
-│       └── Product.java
+│   ├── product
+│   │   └── Product.java
+│   └── order
+│       ├── Order.java
+│       └── OrderItem.java
 │
 ├── infrastructure
 │   ├── user
-│   │   └── UserRepository.java
-│   └── product
-│       └── ProductRepository.java
+│   │   └── UserRepositoryImpl.java
+│   ├── product
+│   │   └── ProductRepositoryImpl.java
+│   └── order
+│       └── OrderRepositoryImpl.java
 │
 ├── presentation
 │   ├── user
@@ -120,9 +130,15 @@ Controller → Application → Domain ← Interface → Infra
 │   │   └── response
 │   │       └── UserResponse.java
 │   └── product
-│       ├── ProductController.java
+│   │   ├── ProductController.java
+│   │   └── response
+│   │       └── ProductResponse.java
+│   └── order
+│       ├── OrderController.java
+│       ├── request
+│       │   └── OrderRequest.java
 │       └── response
-│           └── ProductResponse.java
+│           └── OrderResponse.java
 │
 ├── common
 │   └── response
@@ -134,7 +150,9 @@ Controller → Application → Domain ← Interface → Infra
         ├── user
         │   └── UserServiceTest.java
         └── product
-            └── ProductServiceTest.java   
+        │   └── ProductServiceTest.java
+        └── order
+            └── OrderServiceTest.java   
 ```
 
 - 레이어별로 수정
