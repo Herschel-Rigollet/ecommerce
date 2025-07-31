@@ -91,3 +91,43 @@ Controller → Application → Domain ← Interface → Infra
 - 추후 패키지 구조를 수정하거나 리팩토링을 할 때 권장해 주셨던 방법들의 특징에 더 집중할 수 있게 된 것 같습니다.
 - 테스트를 하기 용이했던 것 하나는 장점으로 다가왔습니다. 물론 다른 구조도 테스트하기 용이할 수 있겠지만요........
 - 제가 장점이라고 생각했던 부분들은 크게 부각되지 않고 '이 정도면 괜찮겠지' 하고 넘어갔던 부분들이 크나큰 한계점으로 다가왔다는 점에 더 집중을 하게 된 챕터였습니다. 이렇게라도 배울 수 있어 다행이긴 합니다.
+
+
+#### 20250731 수정
+패키지 구조 전면 수정했습니다.
+com.example.project
+├── application
+│   └── user
+│       └── UserService.java
+│
+├── domain
+│   └── user
+│       └── User.java
+│
+├── infrastructure
+│   └── user
+│       └── UserRepository.java
+│
+├── presentation
+│   └── user
+│       ├── UserPointController.java
+│       └── response
+│           └── UserResponse.java
+│
+├── common
+│   └── response
+│       ├── CommonResponse.java
+│       └── CommonResultCode.java
+│
+└── test
+    └── application
+        └── user
+            └── UserServiceTest.java
+
+- 레이어별로 수정
+- 굳이 필요하지 않고 중복되는 엔티티를 삭제하고, 도메인에 집중
+- 각 계층에 필요한 역할만을 수행하는 데 집중함
+  - Controller: 서비스에 유즈케이스 위임, DTO로 응답 변환, 공통 응답 포맷으로 래핑, HTTP 응답 반환 등
+  - Service: 도메인 로직을 직접 수행하지 않음, Repository에서 조회 후 도메인에 위임
+  - Domain: 도메인 로직 구현에 집중
+  - Infrastructure: JPA를 통해 DB에서 조회
