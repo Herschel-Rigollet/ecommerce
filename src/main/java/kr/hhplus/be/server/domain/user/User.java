@@ -19,6 +19,11 @@ public class User {
         this.point = 0;
     }
 
+    public User(Long id, int amount) {
+        this.id = id;
+        this.point = amount;
+    }
+
     public void charge(long amount) {
         if (amount <= 0) throw new IllegalArgumentException("충전 금액은 0보다 커야 합니다.");
         this.point += amount;
