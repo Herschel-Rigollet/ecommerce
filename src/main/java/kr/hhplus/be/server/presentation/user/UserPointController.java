@@ -17,9 +17,15 @@ public class UserPointController {
     private final UserService userService;
 
     @PostMapping("/charge")
-    public ResponseEntity<Void> charge(@PathVariable Long userId, @RequestBody long point) {
+    public ResponseEntity<CommonResponse> charge(@PathVariable Long userId, @RequestBody long point) {
         userService.charge(userId, point);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(CommonResponse.of(CommonResultCode.CHARGEPOINT_SUCCESS));
+    }
+
+    @PostMapping("/use/{userId}")
+    public ResponseEntity<CommonResponse> usePoint(@PathVariable Long userId, @RequestBody long point) {
+        userService.usePoint(userId, point);
+        return ResponseEntity.ok(CommonResponse.of(CommonResultCode.USEPOINT_SUCCESS));
     }
 
     @GetMapping("/{userId}")

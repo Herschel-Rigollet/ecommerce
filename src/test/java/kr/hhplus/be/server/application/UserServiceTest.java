@@ -99,4 +99,30 @@ class UserServiceTest {
         });
     }
 
+    @Test
+    void 정상적으로_포인트를_사용할_수_있다() {
+        // Given
+        User user = new User(5L);
+        user.charge(1000);
+        when(userRepository.findById(5L)).thenReturn(Optional.of(user));
+
+        // When
+        userService.usePoint(5L, 500);
+
+        // Then
+        assertEquals(500, user.getPoint());
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void 포인트가_부족하면_사용은_실패한다() {
+        // Given
+        User user = new User(6L);
+        user.charge(300);
+        when(userRepository.findById(6L)).thenReturn(Optional.of(user));
+
+        // When & Then
+        assertThrows(IllegalStateException.class, () -> userService.usePoint(6L, 1000));
+    }
+
 }

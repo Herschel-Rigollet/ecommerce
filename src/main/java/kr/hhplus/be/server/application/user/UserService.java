@@ -15,7 +15,16 @@ public class UserService {
     public void charge(Long userId, long amount) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("해당 사용자를 찾을 수 없습니다."));
+
         user.charge(amount);
+        userRepository.save(user);
+    }
+
+    public void usePoint(Long userId, long amount) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("사용자를 찾을 수 없습니다."));
+
+        user.usePoint(amount);
         userRepository.save(user);
     }
 
