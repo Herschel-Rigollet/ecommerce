@@ -19,18 +19,18 @@ public class UserPointController {
     @PostMapping("/charge")
     public ResponseEntity<CommonResponse> charge(@PathVariable Long userId, @RequestBody long point) {
         userService.charge(userId, point);
-        return ResponseEntity.ok(CommonResponse.of(CommonResultCode.CHARGEPOINT_SUCCESS));
+        return ResponseEntity.ok(CommonResponse.of(CommonResultCode.CHARGE_POINT_SUCCESS));
     }
 
     @PostMapping("/use/{userId}")
     public ResponseEntity<CommonResponse> usePoint(@PathVariable Long userId, @RequestBody long point) {
         userService.usePoint(userId, point);
-        return ResponseEntity.ok(CommonResponse.of(CommonResultCode.USEPOINT_SUCCESS));
+        return ResponseEntity.ok(CommonResponse.of(CommonResultCode.USE_POINT_SUCCESS));
     }
 
     @GetMapping("/{userId}")
     public ResponseEntity<CommonResponse> getPoint(@PathVariable Long userId) {
         User user = userService.getPointByUserId(userId);
-        return ResponseEntity.ok(CommonResponse.of(CommonResultCode.GETPOINT_SUCCESS, UserResponse.from(user)));
+        return ResponseEntity.ok(CommonResponse.of(CommonResultCode.GET_POINT_SUCCESS, UserResponse.from(user)));
     }
 }

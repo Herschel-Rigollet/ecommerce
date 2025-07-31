@@ -7,9 +7,12 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum CommonResultCode {
     // point
-    GETPOINT_SUCCESS(200, "PO01", "잔액 조회 성공"),
-    CHARGEPOINT_SUCCESS(200, "PO02", "잔액 충전 성공"),
-    USEPOINT_SUCCESS(200, "PO02", "잔액 사용 성공");
+    GET_POINT_SUCCESS(200, "PO01", "잔액 조회 성공"),
+    CHARGE_POINT_SUCCESS(200, "PO02", "잔액 충전 성공"),
+    USE_POINT_SUCCESS(200, "PO02", "잔액 사용 성공"),
+
+    // product
+    GET_PRODUCT_SUCCESS(200, "PR01", "상품 상세 조회 성공");
 
     private final int status;
     private final String code;

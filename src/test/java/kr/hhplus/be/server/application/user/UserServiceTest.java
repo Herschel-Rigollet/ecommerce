@@ -1,11 +1,8 @@
-package kr.hhplus.be.server.application;
+package kr.hhplus.be.server.application.user;
 
-import kr.hhplus.be.server.application.user.UserRepository;
-import kr.hhplus.be.server.application.user.UserService;
 import kr.hhplus.be.server.domain.user.User;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
