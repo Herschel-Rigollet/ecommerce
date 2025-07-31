@@ -1,16 +1,9 @@
 package kr.hhplus.be.server.domain.user;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
-@Getter
-@NoArgsConstructor
 public class User {
-    @Id
-    private Long id;
 
+    private Long id;
     private long point;
 
     public User(Long id) {
@@ -18,7 +11,7 @@ public class User {
         this.point = 0;
     }
 
-    public User(Long id, int amount) {
+    public User(Long id, long amount) {
         this.id = id;
         this.point = amount;
     }
@@ -34,7 +27,8 @@ public class User {
         this.point -= amount;
     }
 
-    public long getPoint() {
-        return point;
-    }
+    public Long getId() { return id; }
+    public long getPoint() { return point; }
+
+    public void setId(Long id) { this.id = id; }
 }

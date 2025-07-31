@@ -1,25 +1,18 @@
 package kr.hhplus.be.server.domain.order;
 
-import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-@NoArgsConstructor
+@Setter
 public class Order {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     private Long userId;
-
     private int totalAmount;
-
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
     public Order(Long userId, List<OrderItem> items) {
@@ -30,7 +23,7 @@ public class Order {
                 .sum();
 
         for (OrderItem item : items) {
-            item.setOrder(this); // 연관관계 설정
+            item.setOrder(this);
         }
     }
 }
