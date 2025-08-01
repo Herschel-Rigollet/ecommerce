@@ -1,7 +1,9 @@
 package kr.hhplus.be.server.application.order;
 
+import kr.hhplus.be.server.application.coupon.CouponService;
 import kr.hhplus.be.server.application.product.ProductService;
 import kr.hhplus.be.server.application.user.UserService;
+import kr.hhplus.be.server.domain.coupon.Coupon;
 import kr.hhplus.be.server.domain.order.Order;
 import kr.hhplus.be.server.domain.order.OrderItem;
 import kr.hhplus.be.server.domain.product.Product;
@@ -22,6 +24,7 @@ public class OrderFacade {
     private final ProductService productService;
     private final UserService userService;
     private final StockRollbackService stockRollbackService;
+    private final CouponService couponService;
 
     @Transactional
     public Order placeOrder(OrderRequest request) {
@@ -52,16 +55,41 @@ public class OrderFacade {
                 .mapToInt(OrderItem::getTotalPrice)
                 .sum();
 
-        // 4. 잔액 부족 시 재고 복구 후 예외
+        // 4. 쿠폰 적용 (있으면)
+        if (request.getCouponId() != null) {
+            totalAmount = applyCouponDiscount(request.getCouponId(), request.getUserId(), totalAmount);
+        }
+
+        // 5. 잔액 부족 시 재고 복구 후 예외
         if (user.getPoint() < totalAmount) {
             stockRollbackService.rollback(rollbackTargets);
             throw new IllegalStateException("잔액이 부족합니다.");
         }
 
-        // 5. 포인트 차감
+        // 6. 포인트 차감
         user.usePoint(totalAmount);
 
-        // 6. 주문 생성 및 저장
+        // 7. 주문 생성 및 저장
         return orderService.saveOrder(user.getId(), orderItems);
+    }
+
+    private int applyCouponDiscount(Long couponId, Long userId, int totalAmount) {
+        Coupon coupon = couponService.getCouponById(couponId);
+
+        if (!coupon.getUserId().equals(userId)) {
+            throw new IllegalStateException("해당 쿠폰은 이 사용자 소유가 아닙니다.");
+        }
+        if (coupon.isUsed()) {
+            throw new IllegalStateException("이미 사용된 쿠폰입니다.");
+        }
+
+        // 할인 적용
+        int discountedAmount = totalAmount - (totalAmount * coupon.getDiscountRate() / 100);
+
+        // 쿠폰 사용 처리
+        coupon.use();
+        couponService.saveCoupon(coupon);
+
+        return discountedAmount;
     }
 }

@@ -15,7 +15,11 @@ public enum CommonResultCode {
     GET_PRODUCT_SUCCESS(200, "PR01", "상품 상세 조회 성공"),
 
     // order
-    ORDER_SUCCESS(200, "OR01", "주문 성공");
+    ORDER_SUCCESS(200, "OR01", "주문 성공"),
+
+    // coupon
+    ISSUE_COUPON_SUCCESS(200, "CO01", "쿠폰 발급 성공"),
+    GET_COUPON_SUCCESS(200, "CO02", "쿠폰 조회 성공");
 
     private final int status;
     private final String code;

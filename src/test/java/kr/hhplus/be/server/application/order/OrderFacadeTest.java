@@ -1,7 +1,9 @@
 package kr.hhplus.be.server.application.order;
 
+import kr.hhplus.be.server.application.coupon.CouponService;
 import kr.hhplus.be.server.application.product.ProductService;
 import kr.hhplus.be.server.application.user.UserService;
+import kr.hhplus.be.server.domain.coupon.Coupon;
 import kr.hhplus.be.server.domain.order.Order;
 import kr.hhplus.be.server.domain.order.OrderItem;
 import kr.hhplus.be.server.domain.product.Product;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 
@@ -36,6 +39,9 @@ class OrderFacadeTest {
 
     @Mock
     private StockRollbackService stockRollbackService;
+
+    @Mock
+    private CouponService couponService;
 
     @Test
     void 주문_정상_성공() {
@@ -116,6 +122,96 @@ class OrderFacadeTest {
 
         assertTrue(exception.getMessage().contains("잔액이 부족"));
         verify(stockRollbackService).rollback(anyList());
+    }
+
+    @Test
+    void 쿠폰_적용_성공_시_주문_정상_처리() {
+        // Given
+        Long userId = 1L;
+        Long couponId = 10L;
+        Product product = new Product(1L, "상품A", 10000, 10000); // (id, name, stock, price)
+        User user = new User(userId, 20000); // 포인트 2만원
+        Coupon coupon = new Coupon(userId, "WELCOME10", 10);
+
+        OrderRequest.OrderItemRequest itemReq = new OrderRequest.OrderItemRequest();
+        ReflectionTestUtils.setField(itemReq, "productId", 1L);
+        ReflectionTestUtils.setField(itemReq, "quantity", 1);
+
+        OrderRequest request = new OrderRequest();
+        ReflectionTestUtils.setField(request, "userId", userId);
+        ReflectionTestUtils.setField(request, "items", List.of(itemReq));
+        ReflectionTestUtils.setField(request, "couponId", couponId);
+
+        Order expectedOrder = new Order(userId, List.of(new OrderItem(1L, 1, 10000)));
+
+        // Mocking
+        when(userService.getPointByUserId(userId)).thenReturn(user);
+        when(productService.getProductById(1L)).thenReturn(product);
+        when(couponService.getCouponById(couponId)).thenReturn(coupon);
+        when(orderService.saveOrder(eq(userId), anyList())).thenReturn(expectedOrder);
+
+        // When
+        Order order = orderFacade.placeOrder(request);
+
+        // Then
+        assertNotNull(order);
+        assertEquals(userId, order.getUserId());
+        assertEquals(1, order.getItems().size());
+        assertTrue(coupon.isUsed(), "쿠폰이 사용 처리되어야 한다");
+        assertEquals(11000, user.getPoint(), "포인트는 1만원 - 10% 할인(9천원) 차감되어 11000 남아야 함");
+    }
+
+    @Test
+    void 사용된_쿠폰_제출_시_예외_발생() {
+        // Given
+        Long userId = 1L;
+        Long couponId = 10L;
+        Product product = new Product(1L, "상품A", 100, 10000);
+        User user = new User(userId, 20000);
+        Coupon coupon = new Coupon(userId, "WELCOME10", 10);
+        coupon.use(); // 이미 사용 처리
+
+        OrderRequest.OrderItemRequest itemReq = new OrderRequest.OrderItemRequest();
+        ReflectionTestUtils.setField(itemReq, "productId", 1L);
+        ReflectionTestUtils.setField(itemReq, "quantity", 1);
+
+        OrderRequest request = new OrderRequest();
+        ReflectionTestUtils.setField(request, "userId", userId);
+        ReflectionTestUtils.setField(request, "items", List.of(itemReq));
+        ReflectionTestUtils.setField(request, "couponId", couponId);
+
+        when(userService.getPointByUserId(userId)).thenReturn(user);
+        when(productService.getProductById(1L)).thenReturn(product);
+        when(couponService.getCouponById(couponId)).thenReturn(coupon);
+
+        // When & Then
+        assertThrows(IllegalStateException.class, () -> orderFacade.placeOrder(request));
+    }
+
+    @Test
+    void 다른_사용자의_쿠폰_제출_시_예외_발생() {
+        // Given
+        Long userId = 1L;
+        Long couponId = 10L;
+        Product product = new Product(1L, "상품A", 100, 10000);
+        User user = new User(userId, 20000);
+        Coupon coupon = new Coupon(2L, "WELCOME10", 10); // 다른 userId
+
+        OrderRequest.OrderItemRequest itemReq = new OrderRequest.OrderItemRequest();
+        ReflectionTestUtils.setField(itemReq, "productId", 1L);
+        ReflectionTestUtils.setField(itemReq, "quantity", 1);
+
+        OrderRequest request = new OrderRequest();
+        ReflectionTestUtils.setField(request, "userId", userId);
+        ReflectionTestUtils.setField(request, "items", List.of(itemReq));
+        ReflectionTestUtils.setField(request, "couponId", couponId);
+
+        when(userService.getPointByUserId(userId)).thenReturn(user);
+        when(productService.getProductById(1L)).thenReturn(product);
+        when(couponService.getCouponById(couponId)).thenReturn(coupon);
+
+        // When & Then
+        assertThrows(IllegalStateException.class, () -> orderFacade.placeOrder(request));
     }
 }
 

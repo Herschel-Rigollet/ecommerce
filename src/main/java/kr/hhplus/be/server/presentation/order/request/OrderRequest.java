@@ -11,8 +11,8 @@ import java.util.List;
 public class OrderRequest {
 
     private Long userId;
-
     private List<OrderItemRequest> items;
+    private Long couponId;
 
     public OrderRequest(Long userId, List<OrderItemRequest> items) {
         this.userId = userId;
