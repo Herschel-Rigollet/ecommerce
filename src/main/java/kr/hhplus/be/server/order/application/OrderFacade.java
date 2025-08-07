@@ -69,7 +69,7 @@ public class OrderFacade {
             // 5. 잔액 부족 시 재고 복구 후 예외
             if (user.getPoint() < totalAmount) {
                 // 재고 복구
-                rollbackStockSafely(rollbackTargets, lockedProducts);
+                stockRollbackService.rollbackSafely(rollbackTargets, lockedProducts);
                 throw new IllegalStateException("잔액이 부족합니다. (현재 잔액: " + user.getPoint() + "원, 필요 금액: " + totalAmount + "원)");
             }
 
@@ -85,33 +85,9 @@ public class OrderFacade {
         } catch (Exception e) {
             // 예외 발생 시 재고 복구 (트랜잭션 롤백과 별개로 명시적 복구)
             if (!rollbackTargets.isEmpty()) {
-                rollbackStockSafely(rollbackTargets, lockedProducts);
+                stockRollbackService.rollbackSafely(rollbackTargets, lockedProducts);
             }
             throw e; // 원래 예외 재전파
-        }
-    }
-
-    // 동시성 안전한 재고 복구
-    // 이미 락을 획득한 상품들에 대해 재고를 복구함
-    private void rollbackStockSafely(List<OrderItem> rollbackTargets, List<Product> lockedProducts) {
-        try {
-            // 이미 락을 획득한 상품들이므로 안전하게 재고 복구 가능
-            for (OrderItem item : rollbackTargets) {
-                Product product = lockedProducts.stream()
-                        .filter(p -> p.getProductId().equals(item.getProductId()))
-                        .findFirst()
-                        .orElse(null);
-
-                if (product != null) {
-                    product.increaseStock(item.getQuantity());
-                    System.out.println("재고 복구: 상품ID " + product.getProductId() +
-                            ", 복구 수량: " + item.getQuantity() +
-                            ", 복구 후 재고: " + product.getStock());
-                }
-            }
-        } catch (Exception rollbackException) {
-            // 재고 복구 실패는 로깅만 함, 원래 예외는 그대로 전파
-            System.err.println("재고 복구 실패: " + rollbackException.getMessage());
         }
     }
 
