@@ -21,16 +21,28 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final OrderItemRepository orderItemRepository;
 
+    @Transactional(readOnly = true)
     public List<Product> getAllProducts() {
         return productRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public Product getProductById(Long productId) {
         if (productId == null) {
             throw new IllegalArgumentException("상품 ID는 null일 수 없습니다.");
         }
         return productRepository.findById(productId)
                 .orElseThrow(() -> new NoSuchElementException("해당 상품이 없습니다."));
+    }
+
+    // 비관적 락으로 상품 조회
+    @Transactional
+    public Product getProductByIdForUpdate(Long productId) {
+        if (productId == null) {
+            throw new IllegalArgumentException("상품 ID는 null일 수 없습니다.");
+        }
+        return productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new NoSuchElementException("해당 상품이 없습니다: " + productId));
     }
 
     // 재고 차감
