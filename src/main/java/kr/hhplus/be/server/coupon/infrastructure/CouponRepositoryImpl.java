@@ -22,7 +22,7 @@ public class CouponRepositoryImpl implements CouponRepository {
 
     @Override
     public List<Coupon> findByUserId(Long userId) {
-        return couponJpaRepository.findAllById(Collections.singleton(userId));
+        return couponJpaRepository.findByUserId(userId);
     }
 
     @Override
