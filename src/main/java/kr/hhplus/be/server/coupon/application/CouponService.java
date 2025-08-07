@@ -29,11 +29,12 @@ public class CouponService {
 
         // 2. 현재 발급된 쿠폰 수 확인
         long issuedCount = couponRepository.countByCode(code);
+
         if (issuedCount >= policy.getMaxCount()) {
-            throw new IllegalStateException("쿠폰이 모두 소진되었습니다.");
+            throw new IllegalStateException("쿠폰이 모두 소진되었습니다. (발급완료: " + issuedCount + "/" + policy.getMaxCount() + ")");
         }
 
-        // 3. 쿠폰 발급
+        // 3. 쿠폰 생성 및 발급
         Coupon coupon = Coupon.builder()
                 .userId(userId)
                 .code(policy.getCode())
