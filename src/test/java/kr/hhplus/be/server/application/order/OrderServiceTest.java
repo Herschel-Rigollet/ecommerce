@@ -1,7 +1,9 @@
 package kr.hhplus.be.server.application.order;
 
-import kr.hhplus.be.server.domain.order.Order;
-import kr.hhplus.be.server.domain.order.OrderItem;
+import kr.hhplus.be.server.order.domain.Order;
+import kr.hhplus.be.server.order.domain.OrderItem;
+import kr.hhplus.be.server.order.application.OrderService;
+import kr.hhplus.be.server.order.domain.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

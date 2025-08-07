@@ -1,6 +1,8 @@
 package kr.hhplus.be.server.application.product;
 
-import kr.hhplus.be.server.domain.product.Product;
+import kr.hhplus.be.server.product.domain.Product;
+import kr.hhplus.be.server.product.application.ProductService;
+import kr.hhplus.be.server.product.domain.repository.ProductRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
