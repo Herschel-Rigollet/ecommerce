@@ -25,16 +25,20 @@ public class OrderResponse {
         private int quantity;
         private int unitPrice;
         private int totalPrice;
+
+        public static OrderItemResult from(OrderItem orderItem) {
+            return OrderItemResult.builder()
+                    .productId(orderItem.getProductId())
+                    .quantity(orderItem.getQuantity())
+                    .unitPrice(orderItem.getUnitPrice())
+                    .totalPrice(orderItem.getTotalPrice())
+                    .build();
+        }
     }
 
-    public static OrderResponse from(Order order, List<OrderItem> items) {
-        List<OrderItemResult> itemResults = items.stream()
-                .map(item -> OrderItemResult.builder()
-                        .productId(item.getProductId())
-                        .quantity(item.getQuantity())
-                        .unitPrice(item.getUnitPrice())
-                        .totalPrice(item.getTotalPrice())
-                        .build())
+    public static OrderResponse from(Order order, List<OrderItem> orderItems) {
+        List<OrderItemResult> itemResults = orderItems.stream()
+                .map(OrderItemResult::from) // 수정!
                 .toList();
 
         return OrderResponse.builder()

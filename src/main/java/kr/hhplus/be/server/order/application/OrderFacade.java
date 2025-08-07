@@ -1,6 +1,7 @@
 package kr.hhplus.be.server.order.application;
 
 import kr.hhplus.be.server.coupon.application.CouponService;
+import kr.hhplus.be.server.order.presentation.dto.response.OrderResponse;
 import kr.hhplus.be.server.product.application.ProductService;
 import kr.hhplus.be.server.user.application.UserService;
 import kr.hhplus.be.server.coupon.domain.Coupon;
@@ -27,7 +28,7 @@ public class OrderFacade {
     private final CouponService couponService;
 
     @Transactional
-    public Order placeOrder(OrderRequest request) {
+    public OrderResponse placeOrder(OrderRequest request) { // 반환 타입 변경!
         // 1. 사용자 조회
         User user = userService.getPointByUserId(request.getUserId());
 
@@ -45,7 +46,7 @@ public class OrderFacade {
             // 재고 차감 및 롤백 대상 등록
             product.decreaseStock(itemRequest.getQuantity());
 
-            OrderItem item = new OrderItem(product.getProductId(), itemRequest.getQuantity(), product.getPrice());
+            OrderItem item = new OrderItem(itemRequest.getProductId(), itemRequest.getQuantity(), product.getPrice());
             orderItems.add(item);
             rollbackTargets.add(item);
         }
@@ -70,7 +71,10 @@ public class OrderFacade {
         user.usePoint(totalAmount);
 
         // 7. 주문 생성 및 저장
-        return orderService.saveOrder(user.getUserId(), orderItems);
+        Order savedOrder = orderService.saveOrder(user.getUserId(), orderItems);
+
+        // 8. OrderResponse 생성해서 반환 (OrderItem 정보 포함)
+        return OrderResponse.from(savedOrder, orderItems);
     }
 
     private int applyCouponDiscount(Long couponId, Long userId, int totalAmount) {
