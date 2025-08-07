@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
+// 선착순 쿠폰: 비관적 락
 public interface CouponPolicyJpaRepository extends JpaRepository<CouponPolicy, Long> {
     // 코드로 쿠폰 정책 조회
     Optional<CouponPolicy> findByCode(String code);
