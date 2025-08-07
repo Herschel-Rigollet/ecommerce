@@ -23,6 +23,13 @@ public class UserService {
         userRepository.save(user);
     }
 
+    // 비관적 락으로 사용자 조회
+    @Transactional
+    public User getPointByUserIdForUpdate(Long userId) {
+        return userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new NoSuchElementException("해당 사용자를 찾을 수 없습니다: " + userId));
+    }
+
     // 동시성 안전한 포인트 차감
     @Transactional
     public void usePoint(Long userId, long amount) {
@@ -39,6 +46,7 @@ public class UserService {
         // 트랜잭션 끝나면 자동으로 락 해제
     }
 
+    @Transactional(readOnly = true)
     public User getPointByUserId(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("해당 사용자를 찾을 수 없습니다."));

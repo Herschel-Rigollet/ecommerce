@@ -29,8 +29,8 @@ public class OrderFacade {
 
     @Transactional
     public OrderResponse placeOrder(OrderRequest request) {
-        // 1. 사용자 조회
-        User user = userService.getPointByUserId(request.getUserId());
+        // 1. 사용자 조회 (비관적 락 적용)
+        User user = userService.getPointByUserIdForUpdate(request.getUserId());
 
         // 2. 주문 아이템 처리 (재고 확인 + 차감) - 비관적 락 적용
         List<OrderItem> orderItems = new ArrayList<>();
