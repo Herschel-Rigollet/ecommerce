@@ -1,9 +1,11 @@
 package kr.hhplus.be.server.order.presentation.dto.response;
 
 import kr.hhplus.be.server.order.domain.Order;
+import kr.hhplus.be.server.order.domain.OrderItem;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -13,6 +15,7 @@ public class OrderResponse {
     private Long orderId;
     private Long userId;
     private int totalAmount;
+    private LocalDateTime orderDate;
     private List<OrderItemResult> items;
 
     @Getter
@@ -24,8 +27,8 @@ public class OrderResponse {
         private int totalPrice;
     }
 
-    public static OrderResponse from(Order order) {
-        List<OrderItemResult> items = order.getItems().stream()
+    public static OrderResponse from(Order order, List<OrderItem> items) {
+        List<OrderItemResult> itemResults = items.stream()
                 .map(item -> OrderItemResult.builder()
                         .productId(item.getProductId())
                         .quantity(item.getQuantity())
@@ -35,10 +38,11 @@ public class OrderResponse {
                 .toList();
 
         return OrderResponse.builder()
-                .orderId(order.getId())
+                .orderId(order.getOrderId())
                 .userId(order.getUserId())
                 .totalAmount(order.getTotalAmount())
-                .items(items)
+                .orderDate(order.getOrderDate())
+                .items(itemResults)
                 .build();
     }
 }
