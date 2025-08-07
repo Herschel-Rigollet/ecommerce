@@ -12,13 +12,14 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CouponPolicyRepositoryImpl implements CouponPolicyRepository {
     private final CouponPolicyJpaRepository couponPolicyJpaRepository;
+
     @Override
     public Optional<CouponPolicy> findByCodeForUpdate(String code) {
-        return couponPolicyJpaRepository.findById(code);
+        return couponPolicyJpaRepository.findByCodeForUpdate(code);
     }
 
     @Override
     public Optional<CouponPolicy> findByCode(String code) {
-        return couponPolicyJpaRepository.findById(code);
+        return couponPolicyJpaRepository.findByCode(code);
     }
 }

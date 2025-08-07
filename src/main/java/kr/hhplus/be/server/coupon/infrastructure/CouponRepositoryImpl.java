@@ -17,7 +17,7 @@ public class CouponRepositoryImpl implements CouponRepository {
 
     @Override
     public long countByCode(String code) {
-        return 
+        return couponJpaRepository.countByCode(code);
     }
 
     @Override
