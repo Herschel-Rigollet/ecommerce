@@ -13,6 +13,7 @@ public enum CommonResultCode {
 
     // product
     GET_PRODUCT_SUCCESS(200, "PR01", "상품 상세 조회 성공"),
+    GET_POPULAR_PRODUCTS_SUCCESS(200, "PR02", "상위 상품 조회 성공"),
 
     // order
     ORDER_SUCCESS(200, "OR01", "주문 성공"),
