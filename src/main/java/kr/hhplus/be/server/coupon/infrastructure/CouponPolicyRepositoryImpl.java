@@ -19,6 +19,11 @@ public class CouponPolicyRepositoryImpl implements CouponPolicyRepository {
     }
 
     @Override
+    public CouponPolicy save(CouponPolicy couponPolicy) {
+        return couponPolicyJpaRepository.save(couponPolicy);
+    }
+
+    @Override
     public Optional<CouponPolicy> findByCode(String code) {
         return couponPolicyJpaRepository.findByCode(code);
     }
