@@ -33,6 +33,22 @@ public class ProductService {
                 .orElseThrow(() -> new NoSuchElementException("해당 상품이 없습니다."));
     }
 
+    // 재고 차감
+    @Transactional
+    public void decreaseStock(Long productId, int quantity) {
+        // 비관적 락으로 상품 조회
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
+
+        // 재고 검증 및 차감
+        if (product.getStock() < quantity) {
+            throw new IllegalStateException("재고가 부족합니다. 현재 재고: " + product.getStock());
+        }
+
+        product.decreaseStock(quantity);
+        // 트랜잭션 끝나면 자동으로 락 해제
+    }
+
     // 상위 상품 5개 조회
     @Transactional(readOnly = true)
     public List<PopularProductResponse> getTop5PopularProducts() {
