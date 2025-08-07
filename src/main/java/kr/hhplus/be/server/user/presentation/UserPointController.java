@@ -18,7 +18,7 @@ public class UserPointController {
 
     @PostMapping("/charge/{userId}")
     public ResponseEntity<CommonResponse> charge(@PathVariable Long userId, @RequestBody long point) {
-        userService.charge(userId, point);
+        userService.chargeOptimisticWithRetry(userId, point); // 낙관적 락 기반 충전
         return ResponseEntity.ok(CommonResponse.of(CommonResultCode.CHARGE_POINT_SUCCESS));
     }
 

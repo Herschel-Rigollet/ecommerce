@@ -18,6 +18,7 @@ public class User {
     private long point;
 
     @Version
+    @Column(name = "version")
     private Long version;
 
     public void charge(long amount) {

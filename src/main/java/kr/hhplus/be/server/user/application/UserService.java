@@ -4,6 +4,7 @@ import jakarta.persistence.OptimisticLockException;
 import kr.hhplus.be.server.user.domain.repository.UserRepository;
 import kr.hhplus.be.server.user.domain.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,18 +54,36 @@ public class UserService {
                 .orElseThrow(() -> new NoSuchElementException("해당 사용자를 찾을 수 없습니다."));
     }
 
-    // 잔액 충전 시 낙관적 락 적용
+    // 재시도 로직이 포함된 낙관적 락 충전 메소드
     @Transactional
-    public void chargeOptimistic(Long userId, long amount) {
-        try {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new NoSuchElementException("사용자를 찾을 수 없습니다"));
+    public void chargeOptimisticWithRetry(Long userId, long amount) {
+        int maxRetries = 3;
+        int retryCount = 0;
 
-            user.charge(amount);
-            userRepository.save(user); // OptimisticLockException 가능
+        while (retryCount < maxRetries) {
+            try {
+                User user = userRepository.findById(userId)
+                        .orElseThrow(() -> new NoSuchElementException("해당 사용자를 찾을 수 없습니다: " + userId));
 
-        } catch (OptimisticLockException e) {
-            throw new IllegalStateException("충전 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+                user.charge(amount);
+                userRepository.save(user);
+
+                return; // 성공 시 메소드 종료
+
+            } catch (OptimisticLockingFailureException e) {
+                retryCount++;
+                if (retryCount >= maxRetries) {
+                    throw new IllegalStateException("충전 처리가 " + maxRetries + "회 재시도 후에도 실패했습니다. 잠시 후 다시 시도해주세요.");
+                }
+
+                // 짧은 대기 후 재시도
+                try {
+                    Thread.sleep(100); // 100ms 대기
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("충전 처리가 중단되었습니다.", ie);
+                }
+            }
         }
     }
 }
