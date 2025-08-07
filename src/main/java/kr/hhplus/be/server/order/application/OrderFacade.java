@@ -61,9 +61,9 @@ public class OrderFacade {
                     .mapToInt(OrderItem::getTotalPrice)
                     .sum();
 
-            // 4. 쿠폰 적용 (있으면)
+            // 4. 쿠폰 적용 (낙관적 락 사용)
             if (request.getCouponId() != null) {
-                totalAmount = applyCouponDiscount(request.getCouponId(), request.getUserId(), totalAmount);
+                totalAmount = applyCouponDiscountOptimistic(request.getCouponId(), request.getUserId(), totalAmount);
             }
 
             // 5. 잔액 부족 시 재고 복구 후 예외
@@ -91,23 +91,7 @@ public class OrderFacade {
         }
     }
 
-    private int applyCouponDiscount(Long couponId, Long userId, int totalAmount) {
-        Coupon coupon = couponService.getCouponById(couponId);
-
-        if (!coupon.getUserId().equals(userId)) {
-            throw new IllegalStateException("해당 쿠폰은 이 사용자 소유가 아닙니다.");
-        }
-        if (coupon.isUsed()) {
-            throw new IllegalStateException("이미 사용된 쿠폰입니다.");
-        }
-
-        // 할인 적용
-        int discountedAmount = totalAmount - (totalAmount * coupon.getDiscountRate() / 100);
-
-        // 쿠폰 사용 처리
-        coupon.use();
-        couponService.saveCoupon(coupon);
-
-        return discountedAmount;
+    private int applyCouponDiscountOptimistic(Long couponId, Long userId, int totalAmount) {
+        return couponService.useCouponAndCalculateDiscount(couponId, userId, totalAmount);
     }
 }

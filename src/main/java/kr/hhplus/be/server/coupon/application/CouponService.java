@@ -6,6 +6,7 @@ import kr.hhplus.be.server.coupon.domain.repository.CouponPolicyRepository;
 import kr.hhplus.be.server.coupon.domain.repository.CouponRepository;
 import kr.hhplus.be.server.coupon.domain.Coupon;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,18 +81,46 @@ public class CouponService {
         }
     }
 
-    // 쿠폰 사용 처리에 낙관적 락 적용
+    // 낙관적 락 기반 쿠폰 사용 메소드
     @Transactional
     public void useCouponOptimistic(Long couponId, Long userId) {
-        Coupon coupon = couponRepository.findByCouponId(couponId)
-                .orElseThrow(() -> new NoSuchElementException("쿠폰을 찾을 수 없습니다"));
-
-        validateCoupon(coupon, userId);
-        coupon.use(); // version이 자동으로 체크됨
-
         try {
-            couponRepository.save(coupon); // OptimisticLockException 가능
-        } catch (OptimisticLockException e) {
+            Coupon coupon = couponRepository.findByCouponId(couponId)
+                    .orElseThrow(() -> new NoSuchElementException("쿠폰을 찾을 수 없습니다: " + couponId));
+
+            // 쿠폰 유효성 검증
+            validateCoupon(coupon, userId);
+
+            // 쿠폰 사용 처리 (낙관적 락 적용)
+            coupon.use(); // version이 자동으로 체크됨
+
+            couponRepository.save(coupon);
+
+        } catch (OptimisticLockingFailureException e) {
+            throw new IllegalStateException("쿠폰이 이미 사용되었습니다. 다시 시도해주세요.");
+        }
+    }
+
+    // 쿠폰 사용과 할인 적용을 함께 처리하는 메소드
+    @Transactional
+    public int useCouponAndCalculateDiscount(Long couponId, Long userId, int totalAmount) {
+        try {
+            Coupon coupon = couponRepository.findByCouponId(couponId)
+                    .orElseThrow(() -> new NoSuchElementException("쿠폰을 찾을 수 없습니다: " + couponId));
+
+            // 쿠폰 유효성 검증
+            validateCoupon(coupon, userId);
+
+            // 할인 금액 계산
+            int discountedAmount = coupon.calculateDiscountedAmount(totalAmount);
+
+            // 쿠폰 사용 처리 (낙관적 락 적용)
+            coupon.use();
+            couponRepository.save(coupon);
+
+            return discountedAmount;
+
+        } catch (OptimisticLockingFailureException e) {
             throw new IllegalStateException("쿠폰이 이미 사용되었습니다. 다시 시도해주세요.");
         }
     }
