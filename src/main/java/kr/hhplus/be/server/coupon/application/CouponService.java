@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.coupon.application;
 
+import jakarta.persistence.OptimisticLockException;
 import kr.hhplus.be.server.coupon.domain.CouponPolicy;
 import kr.hhplus.be.server.coupon.domain.repository.CouponPolicyRepository;
 import kr.hhplus.be.server.coupon.domain.repository.CouponRepository;
@@ -76,6 +77,22 @@ public class CouponService {
         }
         if (coupon.isExpired()) {
             throw new IllegalStateException("만료된 쿠폰입니다.");
+        }
+    }
+
+    // 쿠폰 사용 처리에 낙관적 락 적용
+    @Transactional
+    public void useCouponOptimistic(Long couponId, Long userId) {
+        Coupon coupon = couponRepository.findByCouponId(couponId)
+                .orElseThrow(() -> new NoSuchElementException("쿠폰을 찾을 수 없습니다"));
+
+        validateCoupon(coupon, userId);
+        coupon.use(); // version이 자동으로 체크됨
+
+        try {
+            couponRepository.save(coupon); // OptimisticLockException 가능
+        } catch (OptimisticLockException e) {
+            throw new IllegalStateException("쿠폰이 이미 사용되었습니다. 다시 시도해주세요.");
         }
     }
 }

@@ -40,6 +40,9 @@ public class Coupon {
     @Column(name = "expiration_date")
     private LocalDateTime expirationDate;
 
+    @Version
+    private Long version;
+
 
     public boolean isUsed() {
         return this.used;
