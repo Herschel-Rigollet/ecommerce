@@ -1,5 +1,6 @@
 package kr.hhplus.be.server.user.application;
 
+import jakarta.persistence.OptimisticLockException;
 import kr.hhplus.be.server.user.domain.repository.UserRepository;
 import kr.hhplus.be.server.user.domain.User;
 import lombok.RequiredArgsConstructor;
@@ -50,5 +51,20 @@ public class UserService {
     public User getPointByUserId(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("해당 사용자를 찾을 수 없습니다."));
+    }
+
+    // 잔액 충전 시 낙관적 락 적용
+    @Transactional
+    public void chargeOptimistic(Long userId, long amount) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new NoSuchElementException("사용자를 찾을 수 없습니다"));
+
+            user.charge(amount);
+            userRepository.save(user); // OptimisticLockException 가능
+
+        } catch (OptimisticLockException e) {
+            throw new IllegalStateException("충전 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+        }
     }
 }
