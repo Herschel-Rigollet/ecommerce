@@ -41,6 +41,7 @@ public class Coupon {
     private LocalDateTime expirationDate;
 
     @Version
+    @Column(name = "version")
     private Long version;
 
 
