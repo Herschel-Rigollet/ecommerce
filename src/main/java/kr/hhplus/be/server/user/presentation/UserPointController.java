@@ -16,7 +16,7 @@ public class UserPointController {
 
     private final UserService userService;
 
-    @PostMapping("/charge")
+    @PostMapping("/charge/{userId}")
     public ResponseEntity<CommonResponse> charge(@PathVariable Long userId, @RequestBody long point) {
         userService.charge(userId, point);
         return ResponseEntity.ok(CommonResponse.of(CommonResultCode.CHARGE_POINT_SUCCESS));
