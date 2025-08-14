@@ -10,23 +10,21 @@ import org.springframework.context.annotation.Configuration;
 
 
 @Configuration
-@EnableConfigurationProperties(RedissonProperties.class)
 public class RedissonConfig {
+    @Value("${spring.redis.host}")
+    private String redisHost;
+
+    @Value("${spring.redis.port}")
+    private int redisPort;
+
+    private static final String REDISSON_HOST_PREFIX = "redis://";
 
     @Bean
-    public RedissonClient redissonClient(@Value("${spring.data.redis.host}") String host,
-                                         @Value("${spring.data.redis.port}") int port) {
+    public RedissonClient redissonClient() {
+        RedissonClient redisson = null;
         Config config = new Config();
-        config.useSingleServer()
-                .setAddress("redis://" + host + ":" + port)
-                .setConnectionMinimumIdleSize(10)
-                .setConnectionPoolSize(64)
-                .setIdleConnectionTimeout(10000)
-                .setConnectTimeout(10000)
-                .setTimeout(3000)
-                .setRetryAttempts(3)
-                .setRetryInterval(1500);
-
-        return Redisson.create(config);
+        config.useSingleServer().setAddress(REDISSON_HOST_PREFIX + redisHost + ":" + redisPort);
+        redisson = Redisson.create(config);
+        return redisson;
     }
 }
