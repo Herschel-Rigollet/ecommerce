@@ -1,11 +1,13 @@
 package kr.hhplus.be.server.coupon.application;
 
 import jakarta.persistence.OptimisticLockException;
+import kr.hhplus.be.server.common.lock.DistributedLock;
 import kr.hhplus.be.server.coupon.domain.CouponPolicy;
 import kr.hhplus.be.server.coupon.domain.repository.CouponPolicyRepository;
 import kr.hhplus.be.server.coupon.domain.repository.CouponRepository;
 import kr.hhplus.be.server.coupon.domain.Coupon;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,7 @@ import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CouponService {
 
     private final CouponRepository couponRepository;
@@ -23,14 +26,26 @@ public class CouponService {
 
 
      // 선착순 쿠폰 발급 (동시성 제어 적용)
-    @Transactional
+    @DistributedLock(
+            key = "'coupon:issue:' + #code",
+            waitTime = 3L,
+            leaseTime = 10L,
+            failMessage = "쿠폰 발급이 지연되고 있습니다. 잠시 후 다시 시도해주세요."
+    )
     public Coupon issueCoupon(Long userId, String code) {
-        // 1. 쿠폰 정책을 비관적 락으로 조회 (동시성 제어)
-        CouponPolicy policy = couponPolicyRepository.findByCodeForUpdate(code)
+        log.info("쿠폰 발급 시작: userId={}, code={}, thread={}",
+                userId, code, Thread.currentThread().getName());
+
+        // 분산락 획득 + 트랜잭션 시작
+
+        // 1. 쿠폰 정책 조회
+        CouponPolicy policy = couponPolicyRepository.findByCode(code)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 쿠폰 코드입니다: " + code));
 
         // 2. 현재 발급된 쿠폰 수 확인
         long issuedCount = couponRepository.countByCode(code);
+        log.info("쿠폰 발급 현황 확인: code={}, issuedCount={}, maxCount={}, thread={}",
+                code, issuedCount, policy.getMaxCount(), Thread.currentThread().getName());
 
         if (issuedCount >= policy.getMaxCount()) {
             throw new IllegalStateException("쿠폰이 모두 소진되었습니다. (발급완료: " + issuedCount + "/" + policy.getMaxCount() + ")");
@@ -43,10 +58,17 @@ public class CouponService {
                 .discountRate(policy.getDiscountRate())
                 .used(false)
                 .issuedAt(LocalDateTime.now())
-                .expirationDate(LocalDateTime.now().plusDays(30)) // 30일 후 만료
+                .expirationDate(LocalDateTime.now().plusDays(30))
                 .build();
 
-        return couponRepository.save(coupon);
+        Coupon savedCoupon = couponRepository.save(coupon);
+
+        log.info("쿠폰 발급 완료: couponId={}, userId={}, code={}, thread={}",
+                savedCoupon.getCouponId(), userId, code, Thread.currentThread().getName());
+
+        return savedCoupon;
+
+        // 트랜잭션 커밋 -> 분산락 해제
     }
 
     // 사용자 보유 쿠폰 목록 조회
