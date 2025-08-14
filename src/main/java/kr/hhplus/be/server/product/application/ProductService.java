@@ -1,11 +1,13 @@
 package kr.hhplus.be.server.product.application;
 
+import kr.hhplus.be.server.common.lock.DistributedLock;
 import kr.hhplus.be.server.order.domain.OrderItem;
 import kr.hhplus.be.server.order.domain.repository.OrderItemRepository;
 import kr.hhplus.be.server.product.domain.repository.ProductRepository;
 import kr.hhplus.be.server.product.domain.Product;
 import kr.hhplus.be.server.product.presentation.dto.response.PopularProductResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,9 +19,18 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ProductService {
     private final ProductRepository productRepository;
     private final OrderItemRepository orderItemRepository;
+
+    /**
+     * 상품 저장 (멀티락 사용 시 명시적 저장 필요)
+     */
+    @Transactional
+    public Product saveProduct(Product product) {
+        return productRepository.save(product);
+    }
 
     @Transactional(readOnly = true)
     public List<Product> getAllProducts() {
@@ -59,6 +70,78 @@ public class ProductService {
 
         product.decreaseStock(quantity);
         // 트랜잭션 끝나면 자동으로 락 해제
+    }
+
+    /**
+     * 분산락을 적용한 재고 차감
+     * 락 획득 → 트랜잭션 시작 → 비즈니스 로직 → 트랜잭션 종료 → 락 해제
+     */
+    @DistributedLock(
+            key = "#productId",
+            waitTime = 3L,
+            leaseTime = 5L,
+            failMessage = "해당 상품의 재고 처리 중입니다. 잠시 후 다시 시도해주세요."
+    )
+    public void decreaseStockWithDistributedLock(Long productId, int quantity) {
+        log.info("재고 차감 시작: productId={}, quantity={}, thread={}",
+                productId, quantity, Thread.currentThread().getName());
+
+        if (productId == null) {
+            throw new IllegalArgumentException("상품 ID는 null일 수 없습니다.");
+        }
+
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("차감할 수량은 0보다 커야 합니다.");
+        }
+
+        // 일반 조회 (락은 이미 획득한 상태)
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productId));
+
+        // 재고 검증 및 차감
+        if (product.getStock() < quantity) {
+            throw new IllegalStateException(
+                    String.format("재고가 부족합니다. 현재 재고: %d, 요청 수량: %d",
+                            product.getStock(), quantity)
+            );
+        }
+
+        product.decreaseStock(quantity);
+        productRepository.save(product);
+
+        log.info("재고 차감 완료: productId={}, 차감수량={}, 남은재고={}, thread={}",
+                productId, quantity, product.getStock(), Thread.currentThread().getName());
+    }
+
+    /**
+     * 재고 증가 (복구용)
+     */
+    @DistributedLock(
+            key = "#productId",
+            waitTime = 3L,
+            leaseTime = 5L,
+            failMessage = "재고 복구 처리 중입니다. 잠시 후 다시 시도해주세요."
+    )
+    public void increaseStockWithDistributedLock(Long productId, int quantity) {
+        log.info("재고 증가 시작: productId={}, quantity={}, thread={}",
+                productId, quantity, Thread.currentThread().getName());
+
+        if (productId == null) {
+            throw new IllegalArgumentException("상품 ID는 null일 수 없습니다.");
+        }
+
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("증가할 수량은 0보다 커야 합니다.");
+        }
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productId));
+
+        product.increaseStock(quantity);
+        productRepository.save(product);
+
+        log.info("재고 증가 완료: productId={}, 증가수량={}, 총재고={}, thread={}",
+                productId, quantity, product.getStock(), Thread.currentThread().getName());
     }
 
     // 상위 상품 5개 조회

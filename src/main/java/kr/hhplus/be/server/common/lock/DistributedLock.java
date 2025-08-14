@@ -11,8 +11,20 @@ import java.util.concurrent.TimeUnit;
 public @interface DistributedLock {
     /**
      * 락 키 (SpEL 표현식 지원)
+     * 단일락: "'order:user:' + #request.userId"
+     * 멀티락: "#request.items.![productId]" (상품 ID 리스트 반환)
      */
     String key();
+
+    /**
+     * 멀티락 사용 여부
+     */
+    boolean multiLock() default false;
+
+    /**
+     * 멀티락 키 접두사 (multiLock=true일 때 사용)
+     */
+    String keyPrefix() default "MULTI_LOCK:";
 
     /**
      * 락 대기시간 (초)
