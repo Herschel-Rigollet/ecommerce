@@ -8,6 +8,7 @@ import kr.hhplus.be.server.product.domain.Product;
 import kr.hhplus.be.server.product.presentation.dto.response.PopularProductResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -145,6 +146,7 @@ public class ProductService {
     }
 
     // 상위 상품 5개 조회
+    @Cacheable(cacheNames = "topProducts", key = "'last3days_top5'", sync = true)
     @Transactional(readOnly = true)
     public List<PopularProductResponse> getTop5PopularProducts() {
         // 1. 최근 3일 기간 설정

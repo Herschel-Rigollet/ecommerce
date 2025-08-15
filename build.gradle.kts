@@ -52,6 +52,10 @@ dependencies {
 	// Redisson
 	implementation("org.redisson:redisson-spring-boot-starter:3.23.4")
 
+	// Redis Cache
+	implementation("org.springframework.boot:spring-boot-starter-data-redis")
+	implementation("org.springframework.boot:spring-boot-starter-cache")
+
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
