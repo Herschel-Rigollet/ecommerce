@@ -1,12 +1,12 @@
 -- 테스트 데이터 정리 (외래키 순서 고려)
 SET FOREIGN_KEY_CHECKS = 0;
 
-DELETE FROM order_item;
-DELETE FROM orders;
-DELETE FROM coupon;
-DELETE FROM coupon_policy;
-DELETE FROM product;
-DELETE FROM users;
+TRUNCATE TABLE order_item;
+TRUNCATE TABLE orders;
+TRUNCATE TABLE coupon;
+TRUNCATE TABLE coupon_policy;
+TRUNCATE TABLE product;
+TRUNCATE TABLE users;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
