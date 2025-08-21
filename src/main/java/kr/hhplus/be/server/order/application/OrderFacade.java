@@ -109,6 +109,10 @@ public class OrderFacade {
 
             // 6. 주문 생성 및 저장
             Order savedOrder = orderService.saveOrder(user.getUserId(), orderItems);
+
+            // 7. 인기상품 데이터 실시간 업데이트 (Redis)
+            productService.updatePopularProductsData(orderItems);
+
             log.info("주문 생성 완료: orderId={} (트랜잭션 커밋 예정)", savedOrder.getOrderId());
 
             return OrderResponse.from(savedOrder, orderItems);
