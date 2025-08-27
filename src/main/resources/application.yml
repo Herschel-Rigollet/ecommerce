@@ -11,15 +11,48 @@ spring:
       connection-timeout: 10000
       max-lifetime: 60000
     driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: localhost
+    port: 6379
   jpa:
     open-in-view: false
     generate-ddl: false
     show-sql: false
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     properties:
       hibernate.timezone.default_storage: NORMALIZE_UTC
       hibernate.jdbc.time_zone: UTC
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+  redisson:
+    address: redis://localhost:6379
+    connection-minimum-idle-size: 10
+    connection-pool-size: 64
+    idle-connection-timeout: 10000
+    connect-timeout: 10000
+    timeout: 3000
+    retry-attempts: 3
+    retry-interval: 1500
+
+  logging:
+    level:
+      org.hibernate.SQL: debug
+      org.hibernate.type.descriptor.sql: trace
+      kr.hhplus.be.server: debug
+      org.springframework.transaction: debug
+      org.springframework.orm.jpa: debug
+      org.springframework.jdbc.datasource: debug
+
 
 ---
 spring.config.activate.on-profile: local, test

@@ -36,16 +36,18 @@ public class ProductController {
     // 최근 3일 간 상위 상품 5개 조회
     @GetMapping("/popular")
     public ResponseEntity<CommonResponse> getPopularProducts() {
-        List<PopularProductResponse> popularProducts = productService.getTop5PopularProducts();
+        // Redis 기반 조회 시도
+        List<PopularProductResponse> popularProducts = productService.getPopularProductsFromRedis();
 
-        // 순위 매기기 (1~5)
-        AtomicInteger rank = new AtomicInteger(1);
-        List<PopularProductResponse> rankedProducts = popularProducts.stream()
-                .map(product -> product.withRank(rank.getAndIncrement()))
-                .toList();
+        // Redis 데이터가 없으면 기존 DB 방식으로 폴백
+        if (popularProducts.isEmpty()) {
+            popularProducts = productService.getTop5PopularProducts();
+        }
+
+        // 이미 ProductService에서 순위를 매겼으므로 순위 매기는 기능 삭제
 
         return ResponseEntity.ok(
-                CommonResponse.of(CommonResultCode.GET_POPULAR_PRODUCTS_SUCCESS, rankedProducts)
+                CommonResponse.of(CommonResultCode.GET_POPULAR_PRODUCTS_SUCCESS, popularProducts)
         );
     }
 }

@@ -4,9 +4,13 @@ import kr.hhplus.be.server.product.domain.Product;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.io.Serializable;
+
 @Getter
 @Builder
-public class PopularProductResponse {
+public class PopularProductResponse implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private Long productId;
     private String productName;
     private int price;

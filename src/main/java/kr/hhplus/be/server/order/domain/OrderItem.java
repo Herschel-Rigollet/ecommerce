@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "order_item")
 @Getter
@@ -31,11 +33,21 @@ public class OrderItem {
     @Column(name = "total_price", nullable = false)
     private int totalPrice;
 
-    public OrderItem(Long productId, int quantity, int unitPrice) {
+    @Column(name = "order_date")
+    private LocalDateTime orderDate;
+
+    public OrderItem(Long productId, int quantity, int unitPrice, LocalDateTime orderDate) {
         this.productId = productId;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
         this.totalPrice = quantity * unitPrice;
+        this.orderDate = orderDate;
+    }
+
+    public OrderItem(Long productId, int quantity, int unitPrice) {
+        this.productId = productId;
+        this.quantity = quantity;
+        this.unitPrice = unitPrice;
     }
 
     public void assignToOrder(Long orderId) {
