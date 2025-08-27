@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ public class CouponService {
 
     // Redis 키 패턴 정의
     private static final String COUPON_COUNT_KEY = "coupon:count:";        // String - 남은 수량
+    private static final String COUPON_PROCESSING_KEY = "coupon:processing:"; // SET - 처리 중인 요청
     private static final String COUPON_QUEUE_KEY = "coupon:queue:";        // ZSET - 발급 대기열
     private static final String COUPON_ISSUED_KEY = "coupon:issued:";      // SET - 발급 완료자
 
@@ -317,6 +319,166 @@ public class CouponService {
         }
     }
 
+    public void requestAsyncCouponIssuance(Long userId, String code) {
+        log.info("비동기 쿠폰 발급 요청: userId={}, code={}", userId, code);
+
+        // 1. 쿠폰 정책 존재 확인
+        CouponPolicy policy = couponPolicyRepository.findByCode(code)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 쿠폰 코드입니다: " + code));
+
+        // 2. 중복 신청 체크
+        String issuedKey = COUPON_ISSUED_KEY + code;
+        String processingKey = COUPON_PROCESSING_KEY + code;
+
+        if (Boolean.TRUE.equals(stringRedisTemplate.opsForSet().isMember(issuedKey, userId.toString()))) {
+            throw new IllegalStateException("이미 발급받은 쿠폰입니다.");
+        }
+
+        if (Boolean.TRUE.equals(stringRedisTemplate.opsForSet().isMember(processingKey, userId.toString()))) {
+            throw new IllegalStateException("이미 발급 대기 중인 쿠폰입니다.");
+        }
+
+        // 3. 대기열에 추가 (FIFO 순서 보장)
+        String queueKey = COUPON_QUEUE_KEY + code;
+        String requestData = userId + ":" + System.currentTimeMillis(); // 타임스탬프 포함
+
+        stringRedisTemplate.opsForList().leftPush(queueKey, requestData);
+        stringRedisTemplate.opsForSet().add(processingKey, userId.toString());
+
+        // TTL 설정
+        stringRedisTemplate.expire(queueKey, Duration.ofHours(1));
+        stringRedisTemplate.expire(processingKey, Duration.ofHours(1));
+
+        log.info("대기열 진입 완료: userId={}, code={}, queueSize={}",
+                userId, code, stringRedisTemplate.opsForList().size(queueKey));
+    }
+
+    @Scheduled(fixedDelay = 5000)
+    @Transactional
+    public void processAsyncCouponIssuance() {
+        // 모든 쿠폰 코드에 대해 처리
+        List<CouponPolicy> policies = couponPolicyRepository.findAll();
+
+        for (CouponPolicy policy : policies) {
+            processQueueForCouponCode(policy);
+        }
+    }
+
+    private void processQueueForCouponCode(CouponPolicy policy) {
+        String code = policy.getCode();
+        String queueKey = COUPON_QUEUE_KEY + code;
+        String processingKey = COUPON_PROCESSING_KEY + code;
+        String issuedKey = COUPON_ISSUED_KEY + code;
+        String countKey = COUPON_COUNT_KEY + code;
+
+        try {
+            // 대기열이 비어있으면 건너뛰기
+            Long queueSize = stringRedisTemplate.opsForList().size(queueKey);
+            if (queueSize == 0) {
+                return;
+            }
+
+            // 남은 수량 체크
+            long issuedCount = couponRepository.countByCode(code);
+            if (issuedCount >= policy.getMaxCount()) {
+                // 대기열 전체 정리
+                clearQueue(code);
+                log.info("쿠폰 소진으로 대기열 정리: code={}", code);
+                return;
+            }
+
+            // 배치 처리 (최대 10개씩)
+            int batchSize = Math.min(10, (int) (policy.getMaxCount() - issuedCount));
+
+            for (int i = 0; i < batchSize; i++) {
+                String requestData = stringRedisTemplate.opsForList().rightPop(queueKey);
+                if (requestData == null) {
+                    break; // 대기열 비어있음
+                }
+
+                String[] parts = requestData.split(":");
+                Long userId = Long.valueOf(parts[0]);
+
+                try {
+                    // 실제 쿠폰 발급
+                    Coupon coupon = issueCouponInternal(userId, policy);
+
+                    // 발급 완료 처리
+                    stringRedisTemplate.opsForSet().add(issuedKey, userId.toString());
+                    stringRedisTemplate.opsForSet().remove(processingKey, userId.toString());
+
+                    log.info("비동기 쿠폰 발급 완료: userId={}, couponId={}", userId, coupon.getCouponId());
+
+                } catch (Exception e) {
+                    // 발급 실패 시 처리 중 상태만 제거
+                    stringRedisTemplate.opsForSet().remove(processingKey, userId.toString());
+                    log.error("쿠폰 발급 실패: userId={}, code={}, error={}", userId, code, e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("비동기 쿠폰 처리 중 오류: code={}, error={}", code, e.getMessage());
+        }
+    }
+
+    @Transactional
+    private Coupon issueCouponInternal(Long userId, CouponPolicy policy) {
+        // 이중 체크: DB에서 다시 한번 발급 가능 여부 확인
+        long currentCount = couponRepository.countByCode(policy.getCode());
+        if (currentCount >= policy.getMaxCount()) {
+            throw new IllegalStateException("쿠폰이 모두 소진되었습니다.");
+        }
+
+        Coupon coupon = Coupon.builder()
+                .userId(userId)
+                .code(policy.getCode())
+                .discountRate(policy.getDiscountRate())
+                .used(false)
+                .issuedAt(LocalDateTime.now())
+                .expirationDate(LocalDateTime.now().plusDays(30))
+                .build();
+
+        return couponRepository.save(coupon);
+    }
+
+    private void clearQueue(String code) {
+        String queueKey = COUPON_QUEUE_KEY + code;
+        String processingKey = COUPON_PROCESSING_KEY + code;
+
+        // 대기열의 모든 사용자를 처리 중에서 제거
+        List<String> remainingRequests = stringRedisTemplate.opsForList().range(queueKey, 0, -1);
+        if (remainingRequests != null) {
+            for (String requestData : remainingRequests) {
+                String[] parts = requestData.split(":");
+                Long userId = Long.valueOf(parts[0]);
+                stringRedisTemplate.opsForSet().remove(processingKey, userId.toString());
+            }
+        }
+
+        // 대기열 전체 삭제
+        stringRedisTemplate.delete(queueKey);
+    }
+
+    /**
+     * 비동기 쿠폰 발급 상태 조회
+     */
+    public CouponIssuanceStatus getAsyncIssuanceStatus(Long userId, String code) {
+        String issuedKey = COUPON_ISSUED_KEY + code;
+        String processingKey = COUPON_PROCESSING_KEY + code;
+
+        if (Boolean.TRUE.equals(stringRedisTemplate.opsForSet().isMember(issuedKey, userId.toString()))) {
+            return CouponIssuanceStatus.COMPLETED;
+        }
+
+        if (Boolean.TRUE.equals(stringRedisTemplate.opsForSet().isMember(processingKey, userId.toString()))) {
+            String queueKey = COUPON_QUEUE_KEY + code;
+            Long queueSize = stringRedisTemplate.opsForList().size(queueKey);
+            return CouponIssuanceStatus.WAITING.withQueuePosition(queueSize.intValue());
+        }
+
+        return CouponIssuanceStatus.NOT_REQUESTED;
+    }
+
     private void rollbackStockAsync(String code) {
         String countKey = COUPON_COUNT_KEY + code;
         stringRedisTemplate.opsForValue().increment(countKey);
@@ -327,5 +489,32 @@ public class CouponService {
         String queueKey = COUPON_QUEUE_KEY + code;
         stringRedisTemplate.opsForZSet().remove(queueKey, userId.toString());
         log.info("비동기 대기열 제거 완료: code={}, userId={}", code, userId);
+    }
+
+    // 쿠폰 발급 상태 enum
+    public enum CouponIssuanceStatus {
+        NOT_REQUESTED("신청하지 않음"),
+        WAITING("대기 중"),
+        COMPLETED("발급 완료");
+
+        private final String description;
+        private Integer queuePosition;
+
+        CouponIssuanceStatus(String description) {
+            this.description = description;
+        }
+
+        public CouponIssuanceStatus withQueuePosition(int position) {
+            this.queuePosition = position;
+            return this;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public Integer getQueuePosition() {
+            return queuePosition;
+        }
     }
 }
