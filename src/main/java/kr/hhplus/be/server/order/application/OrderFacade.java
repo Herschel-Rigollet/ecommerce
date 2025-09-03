@@ -2,6 +2,7 @@ package kr.hhplus.be.server.order.application;
 
 import kr.hhplus.be.server.common.lock.DistributedLock;
 import kr.hhplus.be.server.coupon.application.CouponService;
+import kr.hhplus.be.server.order.domain.event.OrderCompletedEvent;
 import kr.hhplus.be.server.order.presentation.dto.response.OrderResponse;
 import kr.hhplus.be.server.product.application.ProductService;
 import kr.hhplus.be.server.user.application.UserService;
@@ -13,6 +14,7 @@ import kr.hhplus.be.server.user.domain.User;
 import kr.hhplus.be.server.order.presentation.dto.request.OrderRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +31,7 @@ public class OrderFacade {
     private final UserService userService;
     private final StockRollbackService stockRollbackService;
     private final CouponService couponService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 주문 처리에 상품별 멀티락 적용
@@ -55,13 +58,14 @@ public class OrderFacade {
         // 1. 사용자 조회 (비관적 락 적용)
         User user = userService.getPointByUserIdForUpdate(request.getUserId());
 
-        // 2. 주문 아이템 처리 (멀티락으로 이미 보호됨 - 일반 조회 사용 가능)
+        // 2. 주문 아이템 처리
         List<OrderItem> orderItems = new ArrayList<>();
         List<Product> processedProducts = new ArrayList<>();
+        int originalTotalAmount = 0; // 쿠폰 적용 전 원래 금액
 
         try {
             for (OrderRequest.OrderItemRequest itemRequest : request.getItems()) {
-                // 일반 조회 (멀티락이 이미 상품별 동시성 보장)
+                // 일반 조회
                 Product product = productService.getProductById(itemRequest.getProductId());
 
                 if (product.getStock() < itemRequest.getQuantity()) {
@@ -71,41 +75,42 @@ public class OrderFacade {
                     );
                 }
 
-                // 재고 차감 (멀티락으로 동시성 보장됨)
+                // 재고 차감
                 product.decreaseStock(itemRequest.getQuantity());
                 productService.saveProduct(product); // 명시적 저장
                 processedProducts.add(product);
 
                 OrderItem item = new OrderItem(itemRequest.getProductId(), itemRequest.getQuantity(), product.getPrice());
                 orderItems.add(item);
+                originalTotalAmount += item.getTotalPrice();
 
                 log.info("상품 재고 차감 완료: productId={}, quantity={}, 남은재고={}",
                         itemRequest.getProductId(), itemRequest.getQuantity(), product.getStock());
             }
 
-            // 3. 총 주문 금액 계산
-            int totalAmount = orderItems.stream()
-                    .mapToInt(OrderItem::getTotalPrice)
-                    .sum();
+            // 3. 쿠폰 적용 전 총 주문 금액 계산
+            int finalTotalAmount = originalTotalAmount;
 
             // 4. 쿠폰 적용 (낙관적 락 사용)
             if (request.getCouponId() != null) {
-                totalAmount = applyCouponDiscountOptimistic(request.getCouponId(), request.getUserId(), totalAmount);
+                finalTotalAmount = applyCouponDiscountOptimistic(request.getCouponId(), request.getUserId(), originalTotalAmount);
+                log.info("쿠폰 적용 완료: couponId={}, 할인전={}, 할인후={}",
+                        request.getCouponId(), originalTotalAmount, finalTotalAmount);
             }
 
             // 5. 잔액 검증 및 차감
-            if (user.getPoint() < totalAmount) {
+            if (user.getPoint() < finalTotalAmount) {
                 // 잔액 부족 시 재고 복구
                 rollbackStock(orderItems, processedProducts);
                 throw new IllegalStateException(
                         String.format("잔액이 부족합니다. (현재 잔액: %d원, 필요 금액: %d원)",
-                                user.getPoint(), totalAmount)
+                                user.getPoint(), finalTotalAmount)
                 );
             }
 
-            user.usePoint(totalAmount);
+            user.usePoint(finalTotalAmount);
             log.info("포인트 차감 완료: userId={}, 차감액={}, 남은잔액={}",
-                    request.getUserId(), totalAmount, user.getPoint());
+                    request.getUserId(), finalTotalAmount, user.getPoint());
 
             // 6. 주문 생성 및 저장
             Order savedOrder = orderService.saveOrder(user.getUserId(), orderItems);
@@ -114,6 +119,19 @@ public class OrderFacade {
             productService.updatePopularProductsData(orderItems);
 
             log.info("주문 생성 완료: orderId={} (트랜잭션 커밋 예정)", savedOrder.getOrderId());
+
+            // 8. 주문 완료 이벤트 발행 (트랜잭션 커밋 후 처리됨)
+            OrderCompletedEvent orderCompletedEvent = new OrderCompletedEvent(
+                    savedOrder.getOrderId(),
+                    savedOrder.getUserId(),
+                    orderItems,
+                    finalTotalAmount,
+                    request.getCouponId()
+            );
+
+            eventPublisher.publishEvent(orderCompletedEvent);
+            log.info("주문 완료 이벤트 발행: orderId={}, eventId={}",
+                    savedOrder.getOrderId(), orderCompletedEvent.getEventId());
 
             return OrderResponse.from(savedOrder, orderItems);
 
