@@ -4,6 +4,7 @@ import kr.hhplus.be.server.order.infrastructure.DataPlatformService;
 import kr.hhplus.be.server.order.domain.event.OrderCompletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -17,13 +18,12 @@ public class OrderEventListener {
     private final DataPlatformService dataPlatformService;
 
     /**
-     * 주문 완료 이벤트 처리
-     * - 트랜잭션 커밋 후 실행되어 데이터 일관성 보장
-     * - 비동기 처리로 주문 성능에 영향 없음
-     * - 실패해도 주문 트랜잭션에 영향 없음
+     * Kafka로 주문 완료 이벤트 처리
+     * - 분산 환경에서 안정적인 메시지 처리
+     * - 재시도 및 에러 처리 내장
+     * - 확장성과 내구성 보장
      */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async("dataEventExecutor")
+    @KafkaListener(topics = "order.completed", groupId = "order-data-platform-group")
     public void handleOrderCompleted(OrderCompletedEvent event) {
         log.info("주문 완료 이벤트 수신: orderId={}, userId={}, thread={}",
                 event.getOrderId(), event.getUserId(), Thread.currentThread().getName());
@@ -33,42 +33,41 @@ public class OrderEventListener {
             dataPlatformService.sendOrderDataToPlatform(event)
                     .whenComplete((result, throwable) -> {
                         if (throwable != null) {
-                            log.error("데이터 플랫폼 전송 최종 실패: orderId={}, error={}",
-                                    event.getOrderId(), throwable.getMessage());
-                            // 실패 처리는 DataPlatformService에서 담당
+                            log.error("데이터 플랫폼 전송 최종 실패: orderId={}, eventId={}, error={}",
+                                    event.getOrderId(), event.getEventId(), throwable.getMessage());
                         } else {
-                            log.info("데이터 플랫폼 전송 최종 성공: orderId={}", event.getOrderId());
+                            log.info("데이터 플랫폼 전송 최종 성공: orderId={}, eventId={}",
+                                    event.getOrderId(), event.getEventId());
                         }
                     });
 
-            // 필요시 다른 부가 로직들도 여기서 처리 가능
-            // 예: 이메일 알림, SMS 발송, 통계 업데이트 등
-
         } catch (Exception e) {
             // 이벤트 처리 실패가 주문 트랜잭션에 영향을 주지 않도록 예외 처리
-            log.error("주문 완료 이벤트 처리 중 오류: orderId={}, error={}",
-                    event.getOrderId(), e.getMessage());
+            log.error("주문 완료 Kafka 메시지 처리 중 오류: orderId={}, eventId={}, error={}",
+                    event.getOrderId(), event.getEventId(), e.getMessage());
         }
     }
 
     /**
-     * 추가 이벤트 처리 예시
-     * 주문 완료 후 필요한 다른 부가 로직들
+     * 알림 처리용 별도 Consumer
      */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async("notificationExecutor") // 별도의 스레드 풀 사용 가능
+    @KafkaListener(topics = "order.completed", groupId = "order-notification-group")
     public void handleOrderNotification(OrderCompletedEvent event) {
-        log.info("주문 알림 처리: orderId={}", event.getOrderId());
+        log.info("주문 알림 Kafka 메시지 처리: orderId={}, eventId={}",
+                event.getOrderId(), event.getEventId());
 
         // 이메일, SMS 등 알림 발송 로직
         // sendOrderConfirmationEmail(event);
         // sendOrderConfirmationSMS(event);
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async("analyticsExecutor")
+    /**
+     * 분석 데이터 처리용 별도 Consumer
+     */
+    @KafkaListener(topics = "order.completed", groupId = "order-analytics-group")
     public void handleOrderAnalytics(OrderCompletedEvent event) {
-        log.info("주문 분석 데이터 처리: orderId={}", event.getOrderId());
+        log.info("주문 분석 Kafka 메시지 처리: orderId={}, eventId={}",
+                event.getOrderId(), event.getEventId());
 
         // 실시간 분석을 위한 데이터 처리
         // updateUserPurchaseHistory(event);

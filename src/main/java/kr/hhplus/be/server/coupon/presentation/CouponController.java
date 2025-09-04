@@ -4,6 +4,8 @@ import kr.hhplus.be.server.coupon.application.CouponService;
 import kr.hhplus.be.server.coupon.domain.Coupon;
 import kr.hhplus.be.server.common.CommonResponse;
 import kr.hhplus.be.server.common.CommonResultCode;
+import kr.hhplus.be.server.coupon.infrastructure.CouponEventProducer;
+import kr.hhplus.be.server.coupon.presentation.dto.event.CouponRequestEvent;
 import kr.hhplus.be.server.coupon.presentation.dto.response.CouponResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,32 +24,37 @@ import java.util.concurrent.TimeUnit;
 public class CouponController {
 
     private final CouponService couponService;
+    private final CouponEventProducer couponEventProducer;
 
-    // 비동기 선착순 쿠폰 발급
     @PostMapping("/issue/{userId}")
     public ResponseEntity<CommonResponse> issueCoupon(
             @PathVariable Long userId,
-            @RequestParam String code // 쿠폰 코드
-    ) {
-        log.info("비동기 쿠폰 발급 요청: userId={}, code={}", userId, code);
+            @RequestParam String code) {
+
+        log.info("Kafka 기반 쿠폰 발급 요청: userId={}, code={}", userId, code);
 
         try {
-            // 대기열에 진입 (즉시 완료)
-            couponService.requestAsyncCouponIssuance(userId, code);
+            // 기본 검증 (쿠폰 정책 존재 여부만 확인)
+            couponService.validateCouponPolicy(code);
 
-            // 즉시 응답 반환
+            // Kafka로 발급 요청 이벤트 발행
+            CouponRequestEvent requestEvent = CouponRequestEvent.create(userId, code);
+            couponEventProducer.publishCouponRequest(requestEvent);
+
+            // 즉시 응답 반환 (비동기 처리)
             Map<String, Object> response = Map.of(
-                    "message", "쿠폰 발급 요청이 접수되었습니다. 순서대로 처리됩니다.",
+                    "message", "쿠폰 발급 요청이 접수되었습니다. 선착순으로 처리됩니다.",
                     "userId", userId,
                     "code", code,
+                    "requestId", requestEvent.getRequestId(),
                     "status", "REQUESTED"
             );
 
-            return ResponseEntity.accepted() // HTTP 202
+            return ResponseEntity.accepted()
                     .body(CommonResponse.of(CommonResultCode.ISSUE_COUPON_SUCCESS, response));
 
         } catch (Exception e) {
-            log.error("비동기 쿠폰 발급 요청 실패: userId={}, code={}, error={}", userId, code, e.getMessage());
+            log.error("쿠폰 발급 요청 실패: userId={}, code={}, error={}", userId, code, e.getMessage());
 
             return ResponseEntity.badRequest()
                     .body(CommonResponse.of(CommonResultCode.COUPON_SOLD_OUT, e.getMessage()));

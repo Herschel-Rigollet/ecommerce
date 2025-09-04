@@ -34,4 +34,9 @@ public class CouponRepositoryImpl implements CouponRepository {
     public Optional<Coupon> findByCouponId(Long couponId) {
         return couponJpaRepository.findById(couponId);
     }
+
+    @Override
+    public boolean existsByUserIdAndCode(Long userId, String couponCode) {
+        return couponJpaRepository.existsByUserIdAndCode(userId, couponCode);
+    }
 }

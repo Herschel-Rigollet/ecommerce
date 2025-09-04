@@ -14,4 +14,7 @@ public interface CouponJpaRepository extends JpaRepository<Coupon, Long> {
 
     // 사용자별 사용 가능한 쿠폰만 조회
     List<Coupon> findByUserIdAndUsedFalse(Long userId);
+
+    // 중복 발급 체크를 위한 메서드 추가
+    boolean existsByUserIdAndCode(Long userId, String code);
 }

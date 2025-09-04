@@ -13,4 +13,6 @@ public interface CouponRepository {
     Coupon save(Coupon coupon); // 발급
 
     Optional<Coupon> findByCouponId(Long couponId); // 주문 시 조회용
+
+    boolean existsByUserIdAndCode(Long userId, String couponCode);
 }

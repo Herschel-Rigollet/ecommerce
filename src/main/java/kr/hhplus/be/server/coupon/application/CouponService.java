@@ -517,4 +517,10 @@ public class CouponService {
             return queuePosition;
         }
     }
+
+    // 쿠폰 정책 유효성 검증만 수행
+    public void validateCouponPolicy(String code) {
+        couponPolicyRepository.findByCode(code)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 쿠폰 코드입니다: " + code));
+    }
 }
