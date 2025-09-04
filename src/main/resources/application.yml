@@ -30,23 +30,22 @@ spring:
       request-timeout-ms: 30000
       # 성능
       compression-type: lz4
-      batch-size: 32768                               # 32KB
-      linger-ms: 10
+      batch-size: 16384                              # 16KB (균형)
+      linger-ms: 5                                   # 약간의 배치 허용
 
     # Consumer
     consumer:
-      group-id: ecommerce-order-service
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "kr.hhplus.be.server.order.presentation.dto.message"
+        spring.json.trusted.packages: "kr.hhplus.be.server.order.presentation.dto.message,kr.hhplus.be.server.coupon.presentation.dto.event"
         partition.assignment.strategy: org.apache.kafka.clients.consumer.CooperativeStickyAssignor
       # 재처리/정확성
       enable-auto-commit: false
       auto-offset-reset: earliest
       isolation-level: read_committed
       # 처리량/안정성
-      max-poll-records: 200
+      max-poll-records: 10
       max-poll-interval: 300000                       # 5분
       heartbeat-interval: 3000
       session-timeout: 10000
