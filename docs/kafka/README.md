@@ -139,35 +139,40 @@
 - Partitioner 인터페이스를 구현하여 커스텀 파티셔너를 만들 경우
 - 메시지 키나 값, 토픽 이름으로 어느 파티션에 데이터를 넣을 것인지 지정 가능
 
-## 8. Kafka Streams
+## 8. 구성 요소 간 데이터 흐름
+```mermaid
+sequenceDiagram
+    participant Prod as Producer
+    participant Brok as Topic/Partitions
+    participant C1 as Consumer 1
+    participant C2 as Consumer 2
 
-### 8.1 개념
-- 실시간으로 끊임없이 발생하는 데이터를 처리하기 위한 프레임워크
-- 토픽에 있는 데이터를 낮은 지연과 함께 빠른 속도로 처리 가능
+    Prod->>Brok: send(record, key) (serialize, compress)
+    Brok->>Brok: choose partition = hash(key) % N (or round-robin)
+    Brok-->>C1: deliver from Partition 0 (offsets)
+    Brok-->>C2: deliver from Partition 1 (offsets)
+    Note over Brok: replication: leader writes, followers copy
 
-### 8.2 장점
-- 카프카와 완벽 호환되어 데이터 유실이나 중복 처리 없이 안전하고 빠르게 처리 가능
-- 스케줄링 도구가 필요하지 않아 스트림즈 애플리케이션을 개발해서 배포만 하면 됨
-- 스트림즈 DSL과 프로세서 API를 제공하여 이벤트 기반 데이터 처리에 필요한 메소드를 편리하게 사용 가능
+```
 
-### 8.3 로컬 상태 저장소
-- Streams는 로컬에 상태를 저장
-- 상태에 대한 변환 정보는 카프카의 변경 로그 토픽에 저장
-  -> 프로세스 장애 발생 시에도 상태가 저장되므로 장애 복구 가능
+- Producer: 레코드(key/value)를 직렬화해 브로커로 전송 → Partitioner가 파티션을 결정
+- Topic/Partition: Append-only 로그로 저장, 각 레코드는 offset을 가짐(보존 기간/크기 정책에 따라 삭제)
+- Replication: Leader에 쓰고 Follower로 복제 → acks에 따라 내구성 보장 수준 선택
+- Consumer Group: 파티션을 컨슈머들에 분배(동시 처리), 읽은 위치는 오프셋 커밋으로 관리
+- 순서 보장: 같은 키는 같은 파티션으로 → 파티션 내 순서 보장(글로벌 순서 X)
 
-## 9. Kafka Connect
+## 9. 카프카의 장단점
 
-### 9.1 개념
-- 반복적인 데이터 파이프라인을 효과적으로 배포하고 관리하는 방법을 제공
+### 9.1 장점
+- 파티션, 컨슈머 그룹으로 병렬 처리 쉬움
+- 고가용성
+- 로그 보존기간 동안 오프셋을 되감아 재처리 가능
+- 생산자, 소비자 독립 배포 및 확장 → 아키텍처 유연성 증가
+- Avro, Protobuf, JSON 등 다양한 포맷 지원
 
-### 9.2 구성요소
-- **커넥트**: 커넥터가 동작하도록 실행하는 프로세스
-- **커넥터**: 실질적으로 데이터를 처리하는 코드가 담긴 jar 패키지
-
-### 9.3 커넥터 유형
-- **소스 커넥터**: DB로부터 데이터를 가져와서 토픽에 넣는 역할(프로듀서 역할)
-- **싱크 커넥터**: 특정 토픽의 데이터를 Oracle, MySQL, ES와 같은 특정 저장소에 저장하는 역할(컨슈머와 비슷한 역할)
-
-### 9.4 파이프라인 생성
-- 커넥트를 활용 시 추가 개발과 배포, 모니터링 없이 REST API를 통해 JSON 설정값을 보내면 커넥트에 파이프라인이 생성됨
-- 반복적인 데이터 파이프라인이 필요할 때 JSON 템플릿을 사용하여 빠르게 구현 가능
+### 9.2 단점
+- 순서는 파티션 내만 보장함
+- 파티션 축소 불가
+- 강한 내구성 설정 시 레이턴시 증가 가능
+- 저장, 네트워크 비용 -> 장기 보존, 고복제는 자원 비용이 증가할 수 있음
+- 컨슈머 처리 지연 시 Lag 증가, 리커버리 전략 필요
