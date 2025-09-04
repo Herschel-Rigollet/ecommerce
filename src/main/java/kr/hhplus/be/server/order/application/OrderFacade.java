@@ -15,6 +15,7 @@ import kr.hhplus.be.server.order.presentation.dto.request.OrderRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,9 @@ public class OrderFacade {
     private final StockRollbackService stockRollbackService;
     private final CouponService couponService;
     private final ApplicationEventPublisher eventPublisher;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    private static final String ORDER_COMPLETED_TOPIC = "order.completed";
 
     /**
      * 주문 처리에 상품별 멀티락 적용
@@ -120,7 +124,7 @@ public class OrderFacade {
 
             log.info("주문 생성 완료: orderId={} (트랜잭션 커밋 예정)", savedOrder.getOrderId());
 
-            // 8. 주문 완료 이벤트 발행 (트랜잭션 커밋 후 처리됨)
+            // 8. 주문 완료 이벤트 발행 (트랜잭션 커밋 후 처리됨) -> Kafka로 발행
             OrderCompletedEvent orderCompletedEvent = new OrderCompletedEvent(
                     savedOrder.getOrderId(),
                     savedOrder.getUserId(),
@@ -129,9 +133,8 @@ public class OrderFacade {
                     request.getCouponId()
             );
 
-            eventPublisher.publishEvent(orderCompletedEvent);
-            log.info("주문 완료 이벤트 발행: orderId={}, eventId={}",
-                    savedOrder.getOrderId(), orderCompletedEvent.getEventId());
+            // Kafka 메시지 발행
+            publishOrderCompletedEvent(orderCompletedEvent);
 
             return OrderResponse.from(savedOrder, orderItems);
 
@@ -142,6 +145,27 @@ public class OrderFacade {
             // 예외 발생 시 재고 복구
             rollbackStock(orderItems, processedProducts);
             throw e; // 원래 예외 재전파
+        }
+    }
+
+    /**
+     * Kafka로 주문 완료 이벤트 발행
+     */
+    private void publishOrderCompletedEvent(OrderCompletedEvent event) {
+        try {
+            kafkaTemplate.send(ORDER_COMPLETED_TOPIC, event.getOrderId().toString(), event)
+                    .whenComplete((result, throwable) -> {
+                        if (throwable != null) {
+                            log.error("Kafka 메시지 발행 실패: orderId={}, eventId={}, error={}",
+                                    event.getOrderId(), event.getEventId(), throwable.getMessage());
+                        } else {
+                            log.info("Kafka 메시지 발행 성공: orderId={}, eventId={}, partition={}",
+                                    event.getOrderId(), event.getEventId(), result.getRecordMetadata().partition());
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Kafka 메시지 발행 중 예외: orderId={}, eventId={}, error={}",
+                    event.getOrderId(), event.getEventId(), e.getMessage());
         }
     }
 
