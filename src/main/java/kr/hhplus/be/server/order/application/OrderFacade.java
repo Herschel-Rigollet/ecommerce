@@ -3,6 +3,7 @@ package kr.hhplus.be.server.order.application;
 import kr.hhplus.be.server.common.lock.DistributedLock;
 import kr.hhplus.be.server.coupon.application.CouponService;
 import kr.hhplus.be.server.order.domain.event.OrderCompletedEvent;
+import kr.hhplus.be.server.order.infrastructure.kafka.OrderEventProducer;
 import kr.hhplus.be.server.order.presentation.dto.response.OrderResponse;
 import kr.hhplus.be.server.product.application.ProductService;
 import kr.hhplus.be.server.user.application.UserService;
@@ -34,6 +35,7 @@ public class OrderFacade {
     private final CouponService couponService;
     private final ApplicationEventPublisher eventPublisher;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final OrderEventProducer orderEventProducer;
 
     private static final String ORDER_COMPLETED_TOPIC = "order.completed";
 
@@ -134,7 +136,9 @@ public class OrderFacade {
             );
 
             // Kafka 메시지 발행
-            publishOrderCompletedEvent(orderCompletedEvent);
+            orderEventProducer.publishOrderCompletedEvent(orderCompletedEvent);
+            log.info("주문 완료 Kafka 이벤트 발행: orderId={}, eventId={}",
+                    savedOrder.getOrderId(), orderCompletedEvent.getEventId());
 
             return OrderResponse.from(savedOrder, orderItems);
 
