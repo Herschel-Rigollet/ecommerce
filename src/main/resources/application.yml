@@ -14,6 +14,47 @@ spring:
   redis:
     host: localhost
     port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+    # Producer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      # 신뢰성
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        delivery.timeout.ms: 120000                  # 재시도 포함 최종 타임아웃
+      retries: 2147483647
+      request-timeout-ms: 30000
+      # 성능
+      compression-type: lz4
+      batch-size: 16384                              # 16KB (균형)
+      linger-ms: 5                                   # 약간의 배치 허용
+
+    # Consumer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "kr.hhplus.be.server.order.presentation.dto.message,kr.hhplus.be.server.coupon.presentation.dto.event"
+        partition.assignment.strategy: org.apache.kafka.clients.consumer.CooperativeStickyAssignor
+      # 재처리/정확성
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      isolation-level: read_committed
+      # 처리량/안정성
+      max-poll-records: 10
+      max-poll-interval: 300000                       # 5분
+      heartbeat-interval: 3000
+      session-timeout: 10000
+      fetch-max-wait: 500
+
+    # Listener
+    listener:
+      ack-mode: manual
+      concurrency: 3
   jpa:
     open-in-view: false
     generate-ddl: false
